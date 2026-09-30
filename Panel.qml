@@ -225,6 +225,31 @@ Panel {
     onExited: root.refresh()
   }
 
+  // Without a battery the bar icon shows the active power profile, so it has
+  // to be known before the panel is ever opened and follow changes made
+  // elsewhere (menu, keybinding, another client). Upstream only reads the
+  // profile list while the panel is open, which left the icon on the fallback
+  // battery glyph until the first click. Read it once at startup and again
+  // whenever power-profiles-daemon reports a change.
+  readonly property string liveProfile: {
+    var profile = PowerProfiles.profile
+    if (profile === PowerProfile.PowerSaver) return "power-saver"
+    if (profile === PowerProfile.Performance) return "performance"
+    if (profile === PowerProfile.Balanced) return "balanced"
+    return ""
+  }
+
+  function refreshProfiles() {
+    if (!profilesProc.running) profilesProc.running = true
+  }
+
+  Component.onCompleted: refreshProfiles()
+
+  Connections {
+    target: PowerProfiles
+    function onProfileChanged() { root.refreshProfiles() }
+  }
+
   Timer { interval: 5000; running: root.opened; repeat: true; onTriggered: root.refresh() }
 
   // Rotate the status phrase while the panel is open and we're in a
@@ -278,7 +303,7 @@ Panel {
       ? (root.showPercentage && !vertical
           ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
           : root.batteryIcon())
-      : root.profileIcon(root.activeProfile)
+      : root.profileIcon(root.liveProfile || root.activeProfile)
     slotSize: Style.bar.iconSlot * (root.batteryPresent && root.showPercentage && !vertical ? 2 : 1)
     tooltipText: ""
     onPressed: function(b) {
