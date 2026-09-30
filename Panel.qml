@@ -8,8 +8,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.power"
-  ipcTarget: "omarchy.power"
+  moduleName: "io.github.yesm1ke.power"
+  ipcTarget: "io.github.yesm1ke.power"
   // manageIpc: false so this panel can own the single IpcHandler the target
   // permits — needed for the togglePercentage method below.
   manageIpc: false
@@ -133,9 +133,7 @@ Panel {
   }
 
   function refresh() {
-    if (!batteryPresent) return
-
-    if (!batteryProc.running) batteryProc.running = true
+    if (batteryPresent && !batteryProc.running) batteryProc.running = true
     if (!profilesProc.running) profilesProc.running = true
     if (!systemProc.running) systemProc.running = true
   }
@@ -187,11 +185,6 @@ Panel {
 
   onOpenedChanged: {
     if (opened) {
-      if (!batteryPresent) {
-        close()
-        return
-      }
-
       refresh()
       var idx = profiles.indexOf(activeProfile)
       profileIndex = idx >= 0 ? idx : 0
@@ -199,11 +192,15 @@ Panel {
     }
   }
 
-  onBatteryPresentChanged: if (!batteryPresent) close()
-
-  visible: batteryPresent
-  implicitWidth: batteryPresent ? button.implicitWidth : 0
-  implicitHeight: batteryPresent ? button.implicitHeight : 0
+  // Upstream hides this whole widget (icon + popup) when there's no battery,
+  // closing it on the spot if one goes away mid-session -- reasonable for a
+  // laptop-only widget, but it means the power-profile picker inside is
+  // unreachable on a desktop. Un-gated below so the icon and profile picker
+  // stay usable on a desktop; battery-specific UI (hero, progress bar) still hides
+  // itself via its own `visible: root.batteryPresent` further down.
+  visible: true
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
 
   Process {
     id: batteryProc
@@ -277,14 +274,15 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.showPercentage && !vertical
-      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
-      : root.batteryIcon()
-    slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
+    text: root.batteryPresent
+      ? (root.showPercentage && !vertical
+          ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
+          : root.batteryIcon())
+      : root.profileIcon(root.activeProfile)
+    slotSize: Style.bar.iconSlot * (root.batteryPresent && root.showPercentage && !vertical ? 2 : 1)
     tooltipText: ""
     onPressed: function(b) {
-      if (!root.batteryPresent) return
-      if (b === Qt.RightButton) root.togglePercentage()
+      if (b === Qt.RightButton && root.batteryPresent) root.togglePercentage()
       else root.toggle()
     }
   }
@@ -294,7 +292,7 @@ Panel {
     anchorItem: button
     owner: root
     bar: root.bar
-    open: root.opened && root.batteryPresent
+    open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
@@ -320,6 +318,7 @@ Panel {
 
         // ---------- Hero: battery icon · title/status · percentage ----------
         Item {
+          visible: root.batteryPresent
           width: parent.width
           implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, heroPercent.implicitHeight)
 
@@ -386,6 +385,7 @@ Panel {
 
         // ---------- Battery progress bar ----------
         Item {
+          visible: root.batteryPresent
           width: parent.width
           implicitHeight: Style.space(8)
 
