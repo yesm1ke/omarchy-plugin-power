@@ -1,5 +1,7 @@
 # Power for the Omarchy bar, desktops included
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/mike_g)
+
 The stock Omarchy power widget is built for laptops: without a battery it
 hides itself, so a desktop cannot reach the power-profile picker at all. This
 version keeps it usable without a battery.
