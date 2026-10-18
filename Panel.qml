@@ -478,7 +478,10 @@ Panel {
         }
 
         // ---------- Power profile picker ----------
+        // Nothing above it without a battery (the battery parts hide), so
+        // neither is the separator.
         PanelSeparator {
+          visible: root.batteryPresent
           foreground: root.bar.foreground
         }
 
